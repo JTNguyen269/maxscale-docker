@@ -1,20 +1,27 @@
 [server1]
 type=server
-address=master
+address=primary1
 port=3306
 protocol=MariaDBBackend
 
 [server2]
 type=server
-address=slave1
+address=primary2
 port=3306
 protocol=MariaDBBackend
 
-[server3]
-type=server
-address=slave2
-port=3306
-protocol=MariaDBBackend
+[Sharded-Service]
+type=service
+router=schemarouter
+servers=server1,server2
+user=maxuser
+password=maxpwd
+
+[Sharded-Service-Listener]
+type=listener
+service=Sharded-Service
+protocol=MariaDBClient
+port=4000
 
 # Monitor for the servers
 # This will keep MaxScale aware of the state of the servers.
@@ -24,7 +31,7 @@ protocol=MariaDBBackend
 [MariaDB-Monitor]
 type=monitor
 module=mariadbmon
-servers=server1,server2,server3
+servers=server1,server2
 user=maxuser
 password=maxpwd
 auto_failover=true
@@ -40,7 +47,7 @@ enforce_read_only_slaves=1
 [Read-Only-Service]
 type=service
 router=readconnroute
-servers=server1,server2,server3
+servers=server1,server2
 user=maxuser
 password=maxpwd
 router_options=slave
@@ -51,7 +58,7 @@ router_options=slave
 [Read-Write-Service]
 type=service
 router=readwritesplit
-servers=server1,server2,server3
+servers=server1,server2
 user=maxuser
 password=maxpwd
 master_failure_mode=fail_on_write
