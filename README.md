@@ -144,7 +144,9 @@ sudo docker-compose up -d
 If successful, you should see the terminal returning this message:
 
 `Starting maxscale_primary2_1 ... done`
+
 `Starting maxscale_primary1_1 ... done`
+
 `Starting maxscale_maxscale_1 ... done`
 
 You can also verify if the containers are up and running by typing in:
