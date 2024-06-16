@@ -38,32 +38,60 @@ Also, if you are using an exisiting virtual machine, please ensure that your vir
 
 ---
 
-## Setup and Configuration
+## Configuration
 
 The first thing we'll want to do is clone the [MaxScale repository](https://github.com/JTNguyen269/maxscale-docker).
 
-Open up the terminal inside your virtual machine and type in this following command: `git clone https://github.com/JTNguyen269/maxscale-docker`
-If you do not have Git installed, perform the following commands below:
+Open up the terminal inside your virtual machine and type in this following command:
+```
+git clone https://github.com/JTNguyen269/maxscale-docker
+```
+
+If you do not have Git installed, perform the following commands:
 `sudo apt update` to update all packages, followed by `sudo apt install git` to install Git. Verify Git is installed using this command `git --version`
 
 Next step is to go into the maxscale folder. You can do so by typing in this following command:
 ```
 cd maxscale-docker/maxscale
 ```
+This is the folder that we want to be in when we up and run our maxscale and server containers. But first, we will need to configure a few files.
 
-After MaxScale and the servers have started (takes a few minutes), you can find
-the readwritesplit router on port 4006 and the readconnroute on port 4008. The
-user `maxuser` with the password `maxpwd` can be used to test the cluster.
-Assuming the mariadb client is installed on the host machine:
+Go into the `maxscale.cnf.d` folder by typing in
 ```
-$ mysql -umaxuser -pmaxpwd -h 127.0.0.1 -P 4006 test
-Welcome to the MariaDB monitor.  Commands end with ; or \g.
-Your MySQL connection id is 5
-Server version: 10.2.12 2.2.9-maxscale mariadb.org binary distribution
+cd maxscale-docker/maxscale/maxscale.cnf.d
+```
+And type in `sudo nano example.cnf` to go in and edit the CNF file. You will only be editing the top section of this file. It should look something like this:
+```ruby
+[server1]
+type=server
+address=primary1
+port=3306
+protocol=MariaDBBackend
 
-Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
+[server2]
+type=server
+address=primary2
+port=3306
+protocol=MariaDBBackend
 
-Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+[Sharded-Service]
+type=service
+router=schemarouter
+servers=server1,server2
+user=maxuser
+password=maxpwd
+
+[Sharded-Service-Listener]
+type=listener
+service=Sharded-Service
+protocol=MariaDBClient
+port=4000
+```
+
+We are setting `server1` as `primary1` while `server2` being `primary2`. Also the router used in this guide is the `schemarouter` and we will aos be using port 4000 for the listener.
+
+
+
 
 MySQL [test]>
 ```
