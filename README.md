@@ -168,43 +168,79 @@ It should return a table like this:
 └─────────┴──────────┴──────┴─────────────┴─────────────────┴──────────┴─────────────────────┘
 ```
 
-
-
-
-
-The cluster is configured to utilize automatic failover. To illustrate this you can stop the master
-container and watch for maxscale to failover to one of the original slaves and then show it rejoining
-after recovery:
+You can then go into MariaDB to check what databases are present by typing in:
 ```
-$ docker-compose stop master
-Stopping maxscaledocker_master_1 ... done
-$ docker-compose exec maxscale maxctrl list servers
-┌─────────┬─────────┬──────┬─────────────┬─────────────────┬─────────────┐
-│ Server  │ Address │ Port │ Connections │ State           │ GTID        │
-├─────────┼─────────┼──────┼─────────────┼─────────────────┼─────────────┤
-│ server1 │ master  │ 3306 │ 0           │ Down            │ 0-3000-5    │
-├─────────┼─────────┼──────┼─────────────┼─────────────────┼─────────────┤
-│ server2 │ slave1  │ 3306 │ 0           │ Master, Running │ 0-3001-7127 │
-├─────────┼─────────┼──────┼─────────────┼─────────────────┼─────────────┤
-│ server3 │ slave2  │ 3306 │ 0           │ Slave, Running  │ 0-3001-7127 │
-└─────────┴─────────┴──────┴─────────────┴─────────────────┴─────────────┘
-$ docker-compose start master
-Starting master ... done
-$ docker-compose exec maxscale maxctrl list servers
-┌─────────┬─────────┬──────┬─────────────┬─────────────────┬─────────────┐
-│ Server  │ Address │ Port │ Connections │ State           │ GTID        │
-├─────────┼─────────┼──────┼─────────────┼─────────────────┼─────────────┤
-│ server1 │ master  │ 3306 │ 0           │ Slave, Running  │ 0-3001-7127 │
-├─────────┼─────────┼──────┼─────────────┼─────────────────┼─────────────┤
-│ server2 │ slave1  │ 3306 │ 0           │ Master, Running │ 0-3001-7127 │
-├─────────┼─────────┼──────┼─────────────┼─────────────────┼─────────────┤
-│ server3 │ slave2  │ 3306 │ 0           │ Slave, Running  │ 0-3001-7127 │
-└─────────┴─────────┴──────┴─────────────┴─────────────────┴─────────────┘
-
+mariadb -umaxuser -pmaxpwd -h 127.0.0.1 -P 4000
+```
+Followed by:
+```
+show databases;
 ```
 
-Once complete, to remove the cluster and maxscale containers:
+It should look like this:
+```
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| zipcodes_one       |
+| zipcodes_two       |
++--------------------+
+```
 
+**Note: You may encounter some errors when trying to access MariaDB. One of the errors I dealt with was:
+`ERROR 1045 (28000): Access denied for user 'maxuser'@'172.21.0.1' (using password: YES)`. With each container created, it typically assigns itself an individual IP that differs from the virtual machine itself.**
+
+To resolve this, I had to go into the shell of each MariaDB container and grant privilages followed by flushing. If you happen to run into this error, here are the steps I performed to debug this issue:
+
+1. Access MariaDB container with:
+   ```
+   exec -it maxscale_maxscale_1
+   ```
+2. Then once you are inside the container's shell, type in this command:
+   ```
+   mysql -umaxuser -pmaxpwd
+   ```
+3. Next, you'll need to run the `GRANT` command to grant privilages to `maxuser` from IP `172.21.0.1` with this command:
+   ```
+   GRANT ALL PRIVILEGES ON *.* TO 'maxuser'@'172.21.0.1' IDENTIFIED BY 'maxpwd';
+   ```
+4. Then you'll need to flush privilages after executing the `GRANT` command to apply these changes:
+   ```
+   FLUSH PRIVILEGES;
+   ```
+5. You can now exit out of MariaDB by typing `exit;` and then `exit;` again to exit out of the container's shell.
+6. You'll want to repeat these steps for ports `4001 and 4002`which are `maxscale_primary1_1` and `maxscale_primary2_1`.
+   
+---
+
+## Python Script
+
+Ensure that your containers are up and running on your virtual machine with `sudo docker-compose up -d`
+**Note: We will be running the Python Script on the Host machine**
+
+Launch PyCharm IDE on your Host machine and verify the database connection:
+```ruby
+def connect_to_db():
+    con = mysql.connector.connect(
+        user='maxuser',
+        password='maxpwd',
+        host='10.0.0.36',  # Use VM IP
+        port='4000'  # Specify port
+    )
+    return con
 ```
-docker-compose down -v
-```
+**Note: You will have to change the following line `host='10.100.10.128',` to your virtual machine's IP address.**
+You can do this by typing in `ifconfig` inside the terminal of your virtual machine under `enp0s3`.
+
+
+## Credits
+ERROR 1045 (28000) debugging
+- [Source 1](https://stackoverflow.com/questions/62617460/mysql-docker-container-error-1045-28000-access-denied-for-user-rootloca)
+- [Source 2](https://stackoverflow.com/questions/23950722/how-to-overcome-error-1045-28000-access-denied-for-user-odbclocalhost-u)
+
+
+
+
