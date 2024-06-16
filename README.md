@@ -32,7 +32,7 @@ We will be using Ubuntu on VirtualBox in this guide. If you are unfamiliar or do
 Python 3 will also need to be installed, which can be found [here](https://www.python.org/downloads/).
 
 The Python IDE used in this guide is [PyCharm Community Edition Version 2023.3.4](https://www.jetbrains.com/pycharm/download/other.html)
-- You will need to install the following Python library in order to run the Python script correctly: ```mysql-connector```
+- You will need to install the following Python library in order to run the Python script correctly: `mysql-connector`
 
 Also, if you are using an exisiting virtual machine, please ensure that your virtual machine has enough space to perform this project. You can check space availability by typing in this following command in the terminal: `df`. You can use `docker ps -a` or `docker images -a` to check if there are any present containers that are dangling or not being used. A few ways to clear and remove existing docker containers is with `docker rm`, `docker rmi`, `docker system prune -a` or `docker images purge`. There are more ways to go about this but these are just a few commands that may help you free up some space.
 
@@ -46,7 +46,10 @@ Open up the terminal inside your virtual machine and type in this following comm
 If you do not have Git installed, perform the following commands below:
 `sudo apt update` to update all packages, followed by `sudo apt install git` to install Git. Verify Git is installed using this command `git --version`
 
-
+Next step is to go into the maxscale folder. You can do so by typing in this following command:
+```
+cd maxscale-docker/maxscale
+```
 
 After MaxScale and the servers have started (takes a few minutes), you can find
 the readwritesplit router on port 4006 and the readconnroute on port 4008. The
