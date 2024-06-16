@@ -88,33 +88,89 @@ protocol=MariaDBClient
 port=4000
 ```
 
-We are setting `server1` as `primary1` while `server2` being `primary2`. Also the router used in this guide is the `schemarouter` and we will aos be using port 4000 for the listener.
+We are setting `server1` as `primary1` while `server2` being `primary2`. Also the router used in this guide is the `schemarouter` and we will as be using port 4000 for the listener.
+Once you have made those changes, exit out of the file by `Ctrl+X` followed by `Y` to apply changes and then press `Enter`. 
 
+Next, we'll need to configure the yml file. Go back into the maxscale folder by doing `cd ..` and then `sudo nano docker-compose.yml'
+Edit the file so it looks like this:
 
+```ruby
+version: '2'
+services:
+    primary1:
+        image: mariadb:10.3
+        environment:
+            MYSQL_ALLOW_EMPTY_PASSWORD: 'Y'
+        volumes:
+            - ./sql/primary1:/docker-entrypoint-initdb.d
+        command: mysqld --log-bin=mariadb-bin --binlog-format=ROW --server-id=3000
+        ports:
+            - "4001:3306"
 
+    primary2:
+        image: mariadb:10.3
+        environment:
+            MYSQL_ALLOW_EMPTY_PASSWORD: 'Y'
+        volumes:
+            - ./sql/primary2:/docker-entrypoint-initdb.d
+        command: mysqld --log-bin=mariadb-bin --binlog-format=ROW --server-id=3001 
+        ports:
+            - "4002:3306"
 
-MySQL [test]>
+    maxscale:
+        image: mariadb/maxscale:latest
+        depends_on:
+            - primary1
+            - primary2
+        volumes:
+            - ./maxscale.cnf.d:/etc/maxscale.cnf.d
+        ports:
+            - "4000:4000"  # Shard-Listener
+            - "4006:4006"  # readwrite port
+            - "4008:4008"  # readonly port
+            - "8989:8989"  # REST API port
 ```
-You can edit the [`maxscale.cnf.d/example.cnf`](./maxscale.cnf.d/example.cnf)
-file and recreate the MaxScale container to change the configuration.
+Originally, this file was set up to be a master-slave architecture but is now configured to be a Sharded architecture. An additonal port has been added towards the bottom for `Shard-Listener`. 
 
-To stop the containers, execute the following command. Optionally, use the -v
-flag to also remove the volumes.
+---
 
-To run maxctrl in the container to see the status of the cluster:
+## Maxscale Docker-Compose Setup
+
+Now with everything configured, we will want to run the following commands:
 ```
-$ docker-compose exec maxscale maxctrl list servers
-┌─────────┬─────────┬──────┬─────────────┬─────────────────┬──────────┐
-│ Server  │ Address │ Port │ Connections │ State           │ GTID     │
-├─────────┼─────────┼──────┼─────────────┼─────────────────┼──────────┤
-│ server1 │ master  │ 3306 │ 0           │ Master, Running │ 0-3000-5 │
-├─────────┼─────────┼──────┼─────────────┼─────────────────┼──────────┤
-│ server2 │ slave1  │ 3306 │ 0           │ Slave, Running  │ 0-3000-5 │
-├─────────┼─────────┼──────┼─────────────┼─────────────────┼──────────┤
-│ server3 │ slave2  │ 3306 │ 0           │ Running         │ 0-3000-5 │
-└─────────┴─────────┴──────┴─────────────┴─────────────────┴──────────┘
-
+sudo docker-compose build
+sudo docker-compose up -d
 ```
+If successful, you should see the terminal returning this message:
+`
+Starting maxscale_primary2_1 ... done
+Starting maxscale_primary1_1 ... done
+Starting maxscale_maxscale_1 ... done
+`
+You can also verify if the containers are up and running by typing in:
+```
+docker-compose ps
+```
+
+To view the layout of your servers, you can type in this following command:
+```
+docker-compose exec maxscale maxctrl list servers
+```
+
+It should return a table like this:
+```
+┌─────────┬──────────┬──────┬─────────────┬─────────────────┬──────────┬─────────────────────┐
+│ Server  │ Address  │ Port │ Connections │ State           │ GTID     │ Monitor             │
+├─────────┼──────────┼──────┼─────────────┼─────────────────┼──────────┼─────────────────────┤
+│ server1 │ primary1 │ 3306 │ 0           │ Master, Running │ 0-3000-5 │ MariaDB-Monitor     │
+├─────────┼──────────┼──────┼─────────────┼─────────────────┼──────────┼─────────────────────┤
+│ server2 │ primary2 │ 3306 │ 0           │ Running         │ 0-3000-5 │ MariaDB-Monitor     │
+└─────────┴──────────┴──────┴─────────────┴─────────────────┴──────────┴─────────────────────┘
+```
+
+
+
+
 
 The cluster is configured to utilize automatic failover. To illustrate this you can stop the master
 container and watch for maxscale to failover to one of the original slaves and then show it rejoining
