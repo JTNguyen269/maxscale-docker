@@ -91,7 +91,7 @@ port=4000
 We are setting `server1` as `primary1` while `server2` being `primary2`. Also the router used in this guide is the `schemarouter` and we will as be using port 4000 for the listener.
 Once you have made those changes, exit out of the file by `Ctrl+X` followed by `Y` to apply changes and then press `Enter`. 
 
-Next, we'll need to configure the yml file. Go back into the maxscale folder by doing `cd ..` and then `sudo nano docker-compose.yml'
+Next, we'll need to configure the yml file. Go back into the maxscale folder by doing `cd ..` and then `sudo nano docker-compose.yml`
 Edit the file so it looks like this:
 
 ```ruby
